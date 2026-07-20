@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![timm](https://img.shields.io/badge/timm-1.0-4B8BBE)](https://github.com/huggingface/pytorch-image-models)
+[![CUDA](https://img.shields.io/badge/CUDA-enabled-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-zone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Made with Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter&logoColor=white)](HyConDViT_Net_PCOS_v3_Main.ipynb)
 
@@ -18,11 +19,31 @@ validated, and interpreted under a rigorous, clinically honest evaluation protoc
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Results](#results)
+- [Repository Structure](#repository-structure)
+- [Requirements Summary](#requirements-summary)
+- [System Specifications](#system-specifications)
+- [Getting Started](#getting-started)
+- [Timing and Computational Cost](#timing-and-computational-cost)
+- [Methodology at a Glance](#methodology-at-a-glance)
+- [Interpretability](#interpretability)
+- [Citation](#citation)
+- [Authors and Ownership](#authors-and-ownership)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+
+---
+
 ## Overview
 
 **HyConDViT-Net** is a hybrid deep-learning framework that fuses **nine
-ImageNet-pretrained backbones** drawn from three architecturally distinct families
-— **convolutional networks**, **vision transformers**, and **detection backbones** —
+ImageNet-pretrained backbones** drawn from three architecturally distinct families —
+**convolutional networks**, **vision transformers**, and **detection backbones** —
 into a single calibrated classifier for PCOS detection from ovarian ultrasound
 images.
 
@@ -91,11 +112,17 @@ diagnoses.
 
 The nine constituents, organised by family:
 
-| Family | Models | timm backbone |
-|---|---|---|
-| **Convolutional** | ResNet50, DenseNet201, EfficientNetB5 | `resnet50`, `densenet201`, `tf_efficientnet_b5` |
-| **Transformer** | ViT-Base/16, Swin-Base, PiT-B | `vit_base_patch16_224`, `swin_base_patch4_window7_224`, `pit_b_224` |
-| **Detection** | RT-DETR-R50, YOLO-NAS-B4, EfficientDet-ECA50 | `resnet50d`, `tf_efficientnet_b4`, `ecaresnet50d` |
+| Family | Models | timm backbone | Trainable |
+|---|---|---|:---:|
+| **Convolutional** | ResNet50 | `resnet50` | 9.1 % |
+| | DenseNet201 | `densenet201` | 11.0 % |
+| | EfficientNetB5 | `tf_efficientnet_b5` | 7.7 % |
+| **Transformer** | ViT-Base/16 | `vit_base_patch16_224` | 1.2 % |
+| | Swin-Base | `swin_base_patch4_window7_224` | 1.5 % |
+| | PiT-B | `pit_b_224` | 1.8 % |
+| **Detection** | RT-DETR-R50 | `resnet50d` | 9.1 % |
+| | YOLO-NAS-B4 | `tf_efficientnet_b4` | 10.7 % |
+| | EfficientDet-ECA50 | `ecaresnet50d` | 9.1 % |
 
 ---
 
@@ -133,6 +160,15 @@ Mean over five Monte Carlo runs. **HyConDViT-Net** is the full nine-model hybrid
 .
 ├── HyConDViT_Net_PCOS_v3_Main.ipynb   # End-to-end pipeline (self-contained)
 ├── Fig/                               # Generated figures (EDA, results, XAI)
+│   ├── fig02_feature_distributions_*.png
+│   ├── fig03_*.png / fig07_*.png       # EDA: samples, correlation, resolution
+│   ├── fig06_results_heatmap.png
+│   ├── fig07_cm_individual.png / fig08_cm_hybrid.png
+│   ├── fig09_roc_curves.png / fig10_pr_curves.png
+│   ├── fig11_threshold_sensitivity.png
+│   ├── fig12_mc_stability.png / fig13_accuracy_bar.png
+│   ├── fig14_gradcam_*.png / fig15_vit_attention_rollout.png
+│   └── fig17_external_validation.png
 ├── requirements.txt                   # Python dependencies
 ├── LICENSE
 └── README.md
@@ -140,49 +176,134 @@ Mean over five Monte Carlo runs. **HyConDViT-Net** is the full nine-model hybrid
 
 ---
 
-## Getting Started
+## Requirements Summary
 
-### Requirements
+| Category | Requirement |
+|---|---|
+| **Language** | Python 3.12 |
+| **Deep-learning framework** | PyTorch 2.x + torchvision ≥ 0.15 |
+| **Model zoo** | timm ≥ 1.0.0 (all nine pretrained backbones) |
+| **Numerics / data** | NumPy ≥ 1.24, pandas ≥ 2.0, SciPy ≥ 1.11 |
+| **ML utilities** | scikit-learn ≥ 1.3 (splitting, metrics) |
+| **Imaging** | Pillow ≥ 10.0 |
+| **Visualisation** | Matplotlib ≥ 3.7, seaborn ≥ 0.13 |
+| **Dataset access** | kagglehub ≥ 0.3.4 (automatic download) |
+| **Accelerator** | CUDA-capable GPU, ≥ 8 GB VRAM |
+| **Disk** | ≈ 5 GB (datasets + checkpoints + figures) |
 
-- Python 3.12
-- A CUDA-capable GPU with ≥ 8 GB memory (the study used an NVIDIA RTX 5060; peak
-  training footprint ≈ 2.9 GiB)
-- Core libraries: `torch`, `torchvision`, `timm`, `numpy`, `pandas`,
-  `scikit-learn`, `scipy`, `Pillow`, `matplotlib`, `seaborn`, `kagglehub`
+Install everything with:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Datasets
+<details>
+<summary><b>requirements.txt</b> (click to expand)</summary>
 
-Both corpora are downloaded automatically by the notebook via `kagglehub` — no
-manual download is required. The notebook detects its environment (Colab, Kaggle,
-Jupyter, or local) and resolves the data paths accordingly.
+```
+torch>=2.0
+torchvision>=0.15
+timm>=1.0.0
+numpy>=1.24
+pandas>=2.0
+scikit-learn>=1.3
+scipy>=1.11
+Pillow>=10.0
+matplotlib>=3.7
+seaborn>=0.13
+kagglehub>=0.3.4
+```
+</details>
+
+---
+
+## System Specifications
+
+The framework was developed and benchmarked on the following configuration. It is
+designed to run on a single consumer-grade GPU and detects its runtime environment
+(Colab, Kaggle, Jupyter, or local) automatically.
+
+| Component | Specification |
+|---|---|
+| **GPU** | NVIDIA GeForce RTX 5060 |
+| **GPU memory** | 8,151 MiB (GDDR6) |
+| **Peak training footprint** | ≈ 2.9 GiB |
+| **Driver / CUDA** | Driver 595.71.05 · CUDA 13.2 |
+| **Operating system** | Linux |
+| **Python** | 3.12.13 |
+| **Mixed precision** | `bfloat16` automatic mixed precision |
+| **Determinism** | Global seeding of `random`, `numpy`, `torch`, and CUDA |
+
+> **Memory efficiency.** The nine-model hybrid is engineered to fit comfortably on
+> an 8 GB card: constituents are constructed, evaluated, and moved to host memory
+> sequentially; fusion learning runs under a no-gradient context so that only nine
+> mixture parameters retain gradients; and accelerator memory is reclaimed between
+> models. The peak footprint of ≈ 2.9 GiB leaves ample headroom for concurrent
+> workloads.
+
+---
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Datasets — downloaded automatically
+
+Both corpora are fetched by the notebook via `kagglehub`; **no manual download is
+required.** The notebook resolves data paths for whichever environment it detects.
 
 | Role | Kaggle dataset | Images |
 |---|---|---|
 | **Primary** (train / val / test) | [`ibadeus/pcos-xai-ultrasound-dataset`](https://www.kaggle.com/datasets/ibadeus/pcos-xai-ultrasound-dataset) | 11,784 |
 | **External** (held-out validation) | [`anaghachoudhari/pcos-detection-using-ultrasound-images`](https://www.kaggle.com/datasets/anaghachoudhari/pcos-detection-using-ultrasound-images) | 3,856 |
 
-### Running
+*(Kaggle authentication may be required on first download; see the
+[kagglehub documentation](https://github.com/Kaggle/kagglehub).)*
 
-Open the notebook and run all cells top to bottom:
+### 3. Run the pipeline
 
 ```bash
 jupyter lab HyConDViT_Net_PCOS_v3_Main.ipynb
 ```
 
-The pipeline executes, in order: environment detection and dataset download →
-exploratory data analysis → augmentation → individual-backbone training →
-partial fine-tuning → hybrid fusion and calibration → Monte Carlo cross-validation →
-leave-one-out cross-validation → knowledge distillation → external validation →
-interpretability visualisation. Each Monte Carlo run is checkpointed, so an
-interruption forfeits at most a single run.
+Run all cells top to bottom. The pipeline executes, in order:
 
-> **Runtime.** The full five-run study takes ≈ 30.5 h of continuous GPU computation;
-> the complete notebook (including LOOCV, distillation, external validation, and all
-> figures) takes ≈ 40.6 h on a single RTX 5060.
+1. Environment detection and automatic dataset download
+2. Exploratory data analysis and image-level statistics
+3. Augmentation (fivefold, applied before partitioning)
+4. Individual-backbone training (frozen-backbone linear probing)
+5. Partial fine-tuning of the terminal blocks
+6. Hybrid fusion, temperature calibration, and threshold optimisation
+7. Five-run Monte Carlo cross-validation with bootstrap confidence intervals
+8. Leave-one-out cross-validation
+9. Knowledge distillation into a single-backbone student
+10. External validation on the held-out corpus
+11. Interpretability visualisation (Grad-CAM, attention rollout)
+
+Each Monte Carlo run is checkpointed to disk, so an interruption forfeits at most a
+single run.
+
+---
+
+## Timing and Computational Cost
+
+Wall-clock times measured on a single NVIDIA RTX 5060.
+
+| Stage | Time | Notes |
+|---|---:|---|
+| **Five-run Monte Carlo cross-validation** | **1,829.4 min (≈ 30.5 h)** | ≈ 6.1 h per run |
+| **Full notebook** (MC-CV + LOOCV + KD + external + all figures) | **2,435.5 min (≈ 40.6 h)** | end to end |
+| Per Monte Carlo run | ≈ 6.1 h | 9 backbones + fusion + evaluation |
+| Knowledge distillation | 15 epochs | single-backbone student |
+| Peak GPU memory | ≈ 2.9 GiB | of 8,151 MiB available |
+
+> **Data footprint per run.** Each run uses a stratified 70/15/15 split at the level
+> of original images (8,248 / 1,768 / 1,768), which — after fivefold augmentation —
+> yields 41,240 training, 8,840 validation, and 8,840 test instances.
 
 ---
 
@@ -210,9 +331,9 @@ interruption forfeits at most a single run.
 
 The repository generates gradient-based class-activation maps for a representative
 member of each family and for the fused model, attention-rollout maps for the
-transformer constituent, and a correct-versus-incorrect gallery. The activation
-maps were reviewed by two practising obstetrician–gynaecologists, who confirmed that
-the highlighted regions correspond to clinically meaningful ovarian morphology.
+transformer constituent, and a correct-versus-incorrect gallery. The activation maps
+were reviewed by two practising obstetrician–gynaecologists, who confirmed that the
+highlighted regions correspond to clinically meaningful ovarian morphology.
 
 ---
 
@@ -225,11 +346,29 @@ If you use this work, please cite:
   title   = {HyConDViT-Net: A Vision-Based Hybrid Deep Learning Approach Integrating
              CNNs, Vision Transformers, and Detection Backbones for PCOS Detection
              from Ultrasound Imaging},
-  author  = {Hoque, Md Mahmudul and Islam, Md Kawser and Talukder, Shourav and
-             Akand, Abdullah Rakib and Hasan, Mahmudul},
+  author  = {Hoque, Md Mahmudul and Hasan, Mahmudul},
   year    = {2026}
 }
 ```
+
+---
+
+## Authors and Ownership
+
+This work is owned and maintained by:
+
+| | Author | Role | Contact |
+|---|---|---|---|
+| **Owner** | **Md Mahmudul Hoque** | Lead author · Conceptualization, methodology, and implementation | [cse.mahmud.evan@gmail.com](mailto:cse.mahmud.evan@gmail.com) |
+| **Owner** | **Dr. Mahmudul Hasan** | Principal supervisor · Project administration and review | [mh@cou.ac.bd](mailto:mh@cou.ac.bd) |
+
+**Affiliations** — Department of Computer Science and Engineering, CCN University of
+Science and Technology, Cumilla, Bangladesh · MLXperts Lab, Cumilla, Bangladesh ·
+Department of Computer Science and Engineering, Comilla University, Cumilla,
+Bangladesh.
+
+For questions, collaboration, or licensing enquiries, please contact the owners at
+the addresses above.
 
 ---
 
@@ -242,5 +381,5 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 ## Acknowledgements
 
 We thank the contributors of the publicly available ovarian ultrasound corpora, and
-Dr. Ummy Habiba Rekha and Dr. Tanjina Jerin for their independent radiological
-review of the model's class-activation maps.
+Dr. Ummy Habiba Rekha and Dr. Tanjina Jerin for their independent radiological review
+of the model's class-activation maps.
