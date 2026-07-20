@@ -1,187 +1,218 @@
-# HyConViT-Net: Hybrid CNN–Vision Transformer for PCOS Detection
+<div align="center">
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python"/>
-  <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?style=flat-square&logo=pytorch"/>
-  <img src="https://img.shields.io/badge/TIMM-1.0.26-green?style=flat-square"/>
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Platform-Colab%20%7C%20Kaggle%20%7C%20Local-lightgrey?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Status-Published-brightgreen?style=flat-square"/>
-</p>
+# HyConDViT-Net
 
-<p align="center">
-  <b>Q1 Journal · Physica Scripta · IOP Publishing</b>
-</p>
+### A Vision-Based Hybrid Deep Learning Approach Integrating CNNs, Vision Transformers, and Detection Backbones for PCOS Detection from Ultrasound Imaging
+
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![timm](https://img.shields.io/badge/timm-1.0-4B8BBE)](https://github.com/huggingface/pytorch-image-models)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Made with Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter&logoColor=white)](HyConDViT_Net_PCOS_v3_Main.ipynb)
+
+*A reproducible, tri-family hybrid deep-learning framework for the automated
+detection of Polycystic Ovary Syndrome from ovarian ultrasound imagery — trained,
+validated, and interpreted under a rigorous, clinically honest evaluation protocol.*
+
+</div>
 
 ---
 
 ## Overview
 
-**HyConViT-Net** is a balanced hybrid deep learning ensemble that combines **3 CNN backbones** and **3 Vision Transformer backbones** for automated detection of Polycystic Ovary Syndrome (PCOS) from ovarian ultrasound images.
+**HyConDViT-Net** is a hybrid deep-learning framework that fuses **nine
+ImageNet-pretrained backbones** drawn from three architecturally distinct families
+— **convolutional networks**, **vision transformers**, and **detection backbones** —
+into a single calibrated classifier for PCOS detection from ovarian ultrasound
+images.
 
-Unlike prior work that reports inflated accuracy on small datasets, this framework is designed for **clinical realism**:
+Unlike the many PCOS-classification studies that report near-perfect accuracy on
+fewer than two thousand images under a single train/test split — a regime in which
+pretrained networks memorise rather than generalise — HyConDViT-Net is trained on a
+corpus of **11,784 images**, evaluated under **five-run Monte Carlo cross-validation**
+with **bootstrap confidence intervals** and **leave-one-out cross-validation**, and
+independently validated on a **fully held-out external corpus of 3,856 images**. The
+result is a set of performance figures that are defensible, reproducible, and
+representative of behaviour under genuine clinical conditions.
 
-- Trained on **11,784 images** (6× larger than prior benchmarks)
-- Evaluated under **5-run Monte Carlo Cross-Validation**
-- Tested with **Gaussian + speckle noise** to simulate real scanner variability
-- Uses **frozen backbone (linear probing)** to prevent trivial overfitting
+The framework does not merely average its constituents. It learns a **weighted
+fusion** over the nine backbones, **temperature-calibrates** each architectural
+family, and **optimises the decision threshold** on held-out validation data so that
+the operating point is aligned with the clinical priority of minimising missed
+diagnoses.
 
 ---
 
-## Results
+## Key Features
 
-| Model | Accuracy | F1 | AUC | MCC | σ (Acc) |
-|---|---|---|---|---|---|
-| ResNet18 | 0.853 | 0.854 | 0.949 | 0.744 | 0.002 |
-| DenseNet121 | 0.860 | 0.861 | 0.956 | 0.753 | 0.003 |
-| EfficientNetB4 | 0.855 | 0.856 | 0.932 | 0.748 | 0.004 |
-| Swin-Tiny | 0.860 | 0.861 | 0.928 | 0.753 | 0.002 |
-| ConvNeXt-Tiny | 0.864 | 0.866 | 0.932 | 0.761 | 0.003 |
-| ViT-Small | 0.850 | 0.850 | 0.939 | 0.737 | 0.005 |
-| CNN-Fusion | 0.862 | 0.864 | 0.958 | 0.759 | 0.002 |
-| Trans-Fusion | 0.863 | 0.865 | 0.956 | 0.760 | 0.002 |
-| **HyConViT-Net** ★ | **0.864** | **0.866** | **0.962** | **0.761** | **0.002** |
-
-> All values are mean across 5 independent Monte Carlo runs.  
-> ★ Best model across all metrics.
+| | |
+|---|---|
+| **Tri-family hybrid** | 3 CNN + 3 Transformer + 3 Detection backbones, fused into one model |
+| **Learnable fusion** | Mixture weights on the probability simplex, not uniform voting |
+| **Per-family calibration** | Temperature scaling per architectural family |
+| **Threshold optimisation** | Decision threshold fitted on validation data (θ\* ≈ 0.36) |
+| **Frozen-backbone probing** | Only 1.2–11 % of parameters trainable — overfitting suppressed |
+| **Honest evaluation** | 5-run Monte Carlo CV + bootstrap CIs + LOOCV + external validation |
+| **Interpretability** | Grad-CAM, attention rollout, and expert radiological review |
+| **Deployable** | Knowledge distillation into a single-backbone student (≈9× cheaper) |
+| **Reproducible** | Deterministic seeding, auto dataset download, run-level checkpointing |
 
 ---
 
 ## Architecture
 
 ```
-Input (224×224×3)
-       │
-  ┌────┴────────────────────────────────────────┐
-  │                                              │
-ResNet18   DenseNet121   EffNetB4   Swin-T   ConvNeXt-T   ViT-Small
-  │              │           │         │         │             │
- Head           Head        Head      Head      Head          Head
-  │              │           │         │         │             │
-Softmax       Softmax     Softmax   Softmax   Softmax       Softmax
-  └────────────────────────┬──────────────────────┘
-                           │
-              Soft-Vote Average (1/6 × Σ)
-                           │
-                     Prediction
-               (Infected / Non-Infected)
+                                  ┌─────────────────────────────┐
+                                  │      Ovarian Ultrasound     │
+                                  │        Image (224×224)      │
+                                  └──────────────┬──────────────┘
+                                                 │
+        ┌────────────────────────┬───────────────┼───────────────┬────────────────────────┐
+        ▼                        ▼               ▼               ▼                        ▼
+  ┌───────────┐          ┌───────────┐    ┌───────────┐   ┌───────────┐          ┌───────────┐
+  │  CNN ×3   │          │ Transformer│   │ Detection │   │    ...     │          │    ...    │
+  │ ResNet50  │          │  ViT-B/16  │   │ RT-DETR   │   │  (frozen   │          │  (frozen  │
+  │ DenseNet  │          │  Swin-B    │   │ YOLO-NAS  │   │  backbones │          │ backbones)│
+  │ EffNetB5  │          │  PiT-B     │   │ EffDet    │   │   + MLP)   │          │           │
+  └─────┬─────┘          └─────┬─────┘    └─────┬─────┘   └─────┬─────┘          └─────┬─────┘
+        │  softmax(z/τ_cnn)     │ softmax(z/τ_tr) │ softmax(z/τ_det)  ...                  ...
+        └────────────────────────┴───────────────┴───────────────┴────────────────────────┘
+                                                 │
+                                  ┌──────────────▼──────────────┐
+                                  │   Learnable Weighted Fusion │
+                                  │   p̂ = Σ wᵢ · pᵢ,  w = softmax(α) │
+                                  │   threshold θ* (val-optimised)  │
+                                  └──────────────┬──────────────┘
+                                                 ▼
+                                  ┌─────────────────────────────┐
+                                  │   Infected  /  Non-Infected │
+                                  └─────────────────────────────┘
 ```
 
-**Stage 1** — Frozen backbone, head-only training (30 epochs)  
-**Stage 2** — Last encoder block unfrozen, partial fine-tune (10 epochs, hybrid only)
+The nine constituents, organised by family:
+
+| Family | Models | timm backbone |
+|---|---|---|
+| **Convolutional** | ResNet50, DenseNet201, EfficientNetB5 | `resnet50`, `densenet201`, `tf_efficientnet_b5` |
+| **Transformer** | ViT-Base/16, Swin-Base, PiT-B | `vit_base_patch16_224`, `swin_base_patch4_window7_224`, `pit_b_224` |
+| **Detection** | RT-DETR-R50, YOLO-NAS-B4, EfficientDet-ECA50 | `resnet50d`, `tf_efficientnet_b4`, `ecaresnet50d` |
 
 ---
 
-## Dataset
+## Results
 
-| Class | Images | Avg Resolution | File Size |
-|---|---|---|---|
-| Infected (PCOS+) | 6,784 | 512×512 px | 28 KB – 2 MB |
-| Non-Infected | 5,000 | 500×500 px | 30 KB – 1.8 MB |
-| **Total** | **11,784** | — | — |
+Mean over five Monte Carlo runs. **HyConDViT-Net** is the full nine-model hybrid;
+**HyConViT-Net (6)** is the CNN + Transformer variant.
 
-**Source:** [PCOS-XAI Ultrasound Dataset](https://www.kaggle.com/datasets/ibadeus/pcos-xai-ultrasound-dataset) — Kaggle
+| Model | Accuracy | Precision | Recall | F1 | AUC | MCC |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Best individual (RT-DETR-R50) | 0.9511 | 0.9830 | 0.9312 | 0.9564 | 0.9924 | 0.9026 |
+| Trans-Fusion | 0.9641 | 0.9885 | 0.9487 | 0.9682 | 0.9955 | 0.9281 |
+| HyConViT-Net (6) | 0.9500 | 0.9901 | 0.9223 | 0.9550 | 0.9949 | 0.9017 |
+| **HyConDViT-Net (9)** | **0.9708** | 0.9637 | **0.9866** | **0.9750** | **0.9955** | **0.9404** |
+
+**Highlights**
+
+- The learnable, calibrated fusion lifts **recall from the 0.81–0.95 band** of the
+  individual and uniformly averaged configurations **to 0.9866** — the highest
+  sensitivity in the study — at the cost of only a modest precision trade-off.
+- **External validation**: 0.992 accuracy on 3,856 independently acquired images
+  (every configuration exceeded 0.979).
+- **Knowledge distillation**: a single RT-DETR-R50 student reached **0.9654** test
+  accuracy — a **+0.0118** gain over the standalone backbone — recovering most of the
+  teacher's performance at roughly one-ninth of the inference cost.
+- **Radiological validation**: two independent obstetrician–gynaecologists confirmed
+  that the model's class-activation maps concentrate on the ovarian stroma and
+  perifollicular regions relevant to PCOS assessment.
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
-HyConVitNet-PCOS/
-│
-├── HyConViT_Net_PCOS_Extended.ipynb   # Main notebook (full pipeline)
-├── pcos-data.ipynb                    # Pilot study (small dataset)
-├── pcos-extended-optimized.ipynb      # Intermediate experiment
-│
-├── Fig/                               # All output figures (dpi=300)
-│   ├── fig01_class_distribution.png
-│   ├── fig03_sample_images.png
-│   ├── fig04_feature_distributions.png
-│   ├── fig06_correlation_heatmap.png
-│   ├── fig07_resolution_scatter.png
-│   ├── fig08_augmentation_showcase.png
-│   ├── fig09_results_heatmap.png
-│   ├── fig10_training_densenet121.png
-│   ├── fig12_cm_HyConViT_Net.png
-│   ├── fig15_roc_all_models.png
-│   ├── fig17_accuracy_all_models.png
-│   ├── fig18_mc_stability_accuracy.png
-│   └── fig19_mc_stability_f1.png
-│
-├── mc_results_raw.csv                 # Per-run scores (all 9 models × 5 runs)
-├── mc_results_summary.csv            # Mean ± std summary table
-│
+.
+├── HyConDViT_Net_PCOS_v3_Main.ipynb   # End-to-end pipeline (self-contained)
+├── Fig/                               # Generated figures (EDA, results, XAI)
+├── requirements.txt                   # Python dependencies
+├── LICENSE
 └── README.md
 ```
 
 ---
 
-## Quick Start
+## Getting Started
 
-### Option 1 — Google Colab *(recommended)*
+### Requirements
 
-```python
-# The notebook auto-installs all dependencies and downloads the dataset
-# Just open and Run All
-```
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/evanmahmud/HyConVitNet-PCOS/blob/main/HyConViT_Net_PCOS_Extended.ipynb)
-
-### Option 2 — Kaggle
-
-1. Go to [Kaggle Notebooks](https://www.kaggle.com/code)
-2. Upload `HyConViT_Net_PCOS_Extended.ipynb`
-3. Enable GPU (Settings → Accelerator → T4 GPU)
-4. Add dataset: `ibadeus/pcos-xai-ultrasound-dataset`
-5. Run All
-
-### Option 3 — Local
+- Python 3.12
+- A CUDA-capable GPU with ≥ 8 GB memory (the study used an NVIDIA RTX 5060; peak
+  training footprint ≈ 2.9 GiB)
+- Core libraries: `torch`, `torchvision`, `timm`, `numpy`, `pandas`,
+  `scikit-learn`, `scipy`, `Pillow`, `matplotlib`, `seaborn`, `kagglehub`
 
 ```bash
-# 1. Clone
-git clone https://github.com/evanmahmud/HyConVitNet-PCOS.git
-cd HyConVitNet-PCOS
-
-# 2. Install dependencies
-pip install torch torchvision timm kagglehub scikit-learn \
-            matplotlib seaborn pandas scipy Pillow
-
-# 3. Set up Kaggle API credentials
-mkdir ~/.kaggle
-cp kaggle.json ~/.kaggle/
-chmod 600 ~/.kaggle/kaggle.json
-
-# 4. Launch
-jupyter notebook HyConViT_Net_PCOS_Extended.ipynb
+pip install -r requirements.txt
 ```
 
+### Datasets
+
+Both corpora are downloaded automatically by the notebook via `kagglehub` — no
+manual download is required. The notebook detects its environment (Colab, Kaggle,
+Jupyter, or local) and resolves the data paths accordingly.
+
+| Role | Kaggle dataset | Images |
+|---|---|---|
+| **Primary** (train / val / test) | [`ibadeus/pcos-xai-ultrasound-dataset`](https://www.kaggle.com/datasets/ibadeus/pcos-xai-ultrasound-dataset) | 11,784 |
+| **External** (held-out validation) | [`anaghachoudhari/pcos-detection-using-ultrasound-images`](https://www.kaggle.com/datasets/anaghachoudhari/pcos-detection-using-ultrasound-images) | 3,856 |
+
+### Running
+
+Open the notebook and run all cells top to bottom:
+
+```bash
+jupyter lab HyConDViT_Net_PCOS_v3_Main.ipynb
+```
+
+The pipeline executes, in order: environment detection and dataset download →
+exploratory data analysis → augmentation → individual-backbone training →
+partial fine-tuning → hybrid fusion and calibration → Monte Carlo cross-validation →
+leave-one-out cross-validation → knowledge distillation → external validation →
+interpretability visualisation. Each Monte Carlo run is checkpointed, so an
+interruption forfeits at most a single run.
+
+> **Runtime.** The full five-run study takes ≈ 30.5 h of continuous GPU computation;
+> the complete notebook (including LOOCV, distillation, external validation, and all
+> figures) takes ≈ 40.6 h on a single RTX 5060.
+
 ---
 
-## Key Design Choices
+## Methodology at a Glance
 
-| Choice | Why |
-|---|---|
-| Frozen backbone (linear probing) | Prevents trivial overfitting on medical datasets |
-| 5-run Monte Carlo CV | Quantifies variance; avoids lucky single-split reporting |
-| 5% label noise injection | Simulates radiologist annotation disagreement |
-| Test-set speckle + Gaussian noise | Evaluates robustness under real US scanner variability |
-| Focal loss (γ=2) + label smoothing | Handles class imbalance and noisy labels jointly |
-| Weighted random sampler | Balances class contribution at batch level |
-| Partial fine-tune (hybrid only) | Creates meaningful gap: individual < ensemble |
-| MCC metric | More informative than accuracy for imbalanced classes |
+- **Frozen-backbone linear probing** — backbones are held fixed; only the classifier
+  heads and (later) a single terminal block per backbone are trained. This confines
+  the trainable-parameter budget to 1.2–11 % and makes any hybrid gain attributable
+  to representational diversity rather than added capacity.
+- **Augmentation before partitioning** — the corpus is expanded fivefold *before*
+  splitting, and all augmented copies of an image are kept in the same partition, so
+  train, validation, and test share one difficulty distribution and no leakage
+  occurs.
+- **Imbalance handling** — a weighted random sampler at the batch level and a focal
+  objective with class weights at the loss level.
+- **Label-noise injection** — a small fraction of training labels is flipped per run,
+  reflecting documented inter-observer disagreement in gynaecological ultrasound.
+- **Mixed precision** — training runs in `bfloat16` with a gradient-finiteness guard,
+  which removes the numerical overflow that half precision can induce in certain
+  backbones.
 
 ---
 
-## Environment
+## Interpretability
 
-| Component | Version |
-|---|---|
-| Python | 3.12.13 |
-| PyTorch | 2.x |
-| TIMM | 1.0.26 |
-| CUDA | 13.0 |
-| GPU | NVIDIA RTX 5060 Laptop / Tesla P100 |
-| cuDNN | 9.1.9 |
+The repository generates gradient-based class-activation maps for a representative
+member of each family and for the fused model, attention-rollout maps for the
+transformer constituent, and a correct-versus-incorrect gallery. The activation
+maps were reviewed by two practising obstetrician–gynaecologists, who confirmed that
+the highlighted regions correspond to clinically meaningful ovarian morphology.
 
 ---
 
@@ -190,69 +221,26 @@ jupyter notebook HyConViT_Net_PCOS_Extended.ipynb
 If you use this work, please cite:
 
 ```bibtex
-@article{hoque2026hyconvitnet,
-  author  = {Hoque, Md Mahmudul and Islam, Md Kawser and
-             Talukder, Shourav and Hasan, Mahmudul},
-  title   = {{HyConViT-Net}: A Vision-Based Hybrid Deep Learning Approach
-             Integrating {CNNs} and Vision Transformers for {PCOS} Detection
+@article{hoque2026hycondvit,
+  title   = {HyConDViT-Net: A Vision-Based Hybrid Deep Learning Approach Integrating
+             CNNs, Vision Transformers, and Detection Backbones for PCOS Detection
              from Ultrasound Imaging},
-  journal = {Physica Scripta},
-  year    = {2026},
-  publisher = {IOP Publishing},
-  note    = {Under review}
+  author  = {Hoque, Md Mahmudul and Islam, Md Kawser and Talukder, Shourav and
+             Akand, Abdullah Rakib and Hasan, Mahmudul},
+  year    = {2026}
 }
 ```
-
-Also consider citing our earlier conference work that this study extends:
-
-```bibtex
-@article{hoque2026denconrest,
-  author  = {Hoque, Md Mahmudul and Hassain, Md Mehedi and Rahaman, Muntakimur
-             and Islam, Md. Towhidul and Rani, Shaista and Mollah, Md Sharif},
-  title   = {Vision Models for Medical Imaging: A Hybrid Approach for {PCOS}
-             Detection from Ultrasound Scans},
-  journal = {Journal of Physics: Conference Series},
-  volume  = {3191},
-  number  = {1},
-  pages   = {012120},
-  year    = {2026},
-  doi     = {10.1088/1742-6596/3191/1/012120}
-}
-```
-
----
-
-## Related Work Comparison
-
-| Method | Dataset Size | Validation | Acc | AUC | MCC |
-|---|---|---|---|---|---|
-| VGG-19 [Kumari 2021] | ~1,200 | Single split | 0.700 | — | — |
-| DL Fusion [Alamoudi 2023] | ~2K | Single split | 0.850 | — | — |
-| PCONet [Hosain 2022] | ~1K | Single split | 0.966 | — | — |
-| ITL-CNN [Gopalakrishnan 2022] | 1,924 | Single split | 0.980 | — | — |
-| ConvTransGFusion [Qezelbash 2025] | 1,924 | Single split | 0.989 | — | — |
-| DenConREST [Hoque 2026] | 1,924 | Single split | 0.982 | — | — |
-| **HyConViT-Net (Ours)** | **11,784** | **MC-CV ×5** | **0.864** | **0.962** | **0.761** |
-
-> Prior methods reporting >96% accuracy used datasets 6× smaller under single hold-out evaluation — conditions that do not reflect clinical deployment. HyConViT-Net is the only method validated with multi-run cross-validation, domain-shift noise, and MCC reporting.
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 
 ---
 
-## Contact
+## Acknowledgements
 
-**Md Mahmudul Hoque** — cse.mahmud.evan@gmail.com  
-**Mahmudul Hasan** — mh@cou.ac.bd  
-
-MLXperts Lab · Comilla University · 
-
----
-
-<p align="center">
-  Made with ❤️ for open and reproducible medical AI research
-</p>
+We thank the contributors of the publicly available ovarian ultrasound corpora, and
+Dr. Ummy Habiba Rekha and Dr. Tanjina Jerin for their independent radiological
+review of the model's class-activation maps.
